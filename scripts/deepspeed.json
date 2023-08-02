@@ -1,24 +1,4 @@
 {
-    "optimizer": {
-        "type": "Adam",
-        "params": {
-            "lr": 1e-4,
-            "betas": [
-                0.9,
-                0.999
-            ],
-            "eps": 1e-8,
-            "weight_decay": 0.000
-        }
-    },
-    "scheduler": {
-     "type": "WarmupLR",
-     "params": {
-         "warmup_min_lr": "auto",
-         "warmup_max_lr": "auto",
-         "warmup_num_steps": "auto"
-     }
-    },
     "fp16": {
         "enabled": "auto",
         "loss_scale": 0,
@@ -27,7 +7,6 @@
         "hysteresis": 2,
         "min_loss_scale": 1e-10
     },
-
     "zero_optimization": {
         "stage": 2,
         "allgather_partitions": true,
@@ -37,7 +16,6 @@
         "reduce_bucket_size": 1e8,
         "contiguous_gradients": true
     },
-
     "gradient_accumulation_steps": "auto",
     "gradient_clipping": "auto",
     "steps_per_print": 2000,

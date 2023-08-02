@@ -18,7 +18,7 @@ validation_file=/mnt/data1/Data/SFT/glm_sft/d2q_1.json
 deepspeed_config_file=deepspeed.json
 
 #python finetuning_chatglm2.py \
-torchrun --nnodes 1 --nproc_per_node 1 finetuning_chatglm2.py \
+torchrun --nnodes 1 --nproc_per_node 1 finetuning_chatglm2_for_cls.py \
     --deepspeed ${deepspeed_config_file} \
     --model_name_or_path ${pretrained_model} \
     --tokenizer_name_or_path ${chinese_tokenizer_path} \

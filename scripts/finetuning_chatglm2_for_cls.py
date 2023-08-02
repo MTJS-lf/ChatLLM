@@ -8,6 +8,8 @@ import sys
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Mapping
 
+import evaluate
+
 import torch
 from torch.utils.data import RandomSampler, DataLoader
 sys.path.append("..")
@@ -15,7 +17,7 @@ sys.path.append("..")
 from utils.util import *
 from utils.dataset import *
 
-from model.chatGLM2.modeling_chatglm import ChatGLMForConditionalGeneration
+from model.chatGLM2.modeling_chatglm import ChatGLMForConditionalGeneration, ChatGLMForSequenceClassification
 from model.chatGLM2.tokenization_chatglm import ChatGLMTokenizer
 from model.chatGLM2.configuration_chatglm import ChatGLMConfig
 
@@ -147,7 +149,8 @@ def main():
     config_kwargs = {
     }
     config = ChatGLMConfig.from_pretrained(model_args.model_name_or_path, **config_kwargs)
-    model = ChatGLMForConditionalGeneration.from_pretrained(model_args.model_name_or_path)
+    model = ChatGLMForSequenceClassification.from_pretrained(model_args.model_name_or_path)
+    print(model)
     tokenizer = ChatGLMTokenizer.from_pretrained(model_args.model_name_or_path)
     lora_config = LoraConfig(r=training_args.lora_rank,
                              lora_alpha=training_args.lora_alpha,
@@ -179,37 +182,17 @@ def main():
     )
 
     # Metric
-    def compute_metrics(eval_preds):
-        preds, labels = eval_preds
-        if isinstance(preds, tuple):
-            preds = preds[0]
-        decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
-        if data_args.ignore_pad_token_for_loss:
-            # Replace -100 in the labels as we can't decode them.
-            labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-        decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+    metric = evaluate.load("accuracy")
 
-        score_dict = {
-            "rouge-1": [],
-            "rouge-2": [],
-            "rouge-l": [],
-            "bleu-4": []
-        }
-        for pred, label in zip(decoded_preds, decoded_labels):
-            hypothesis = list(jieba.cut(pred))
-            reference = list(jieba.cut(label))
-            rouge = Rouge()
-            scores = rouge.get_scores(' '.join(hypothesis) , ' '.join(reference))
-            result = scores[0]
-            
-            for k, v in result.items():
-                score_dict[k].append(round(v["f"] * 100, 4))
-            bleu_score = sentence_bleu([list(label)], list(pred), smoothing_function=SmoothingFunction().method3)
-            score_dict["bleu-4"].append(round(bleu_score * 100, 4))
-
-        for k, v in score_dict.items():
-            score_dict[k] = float(np.mean(v))
-        return score_dict
+    # You can define your custom compute_metrics function. It takes an `EvalPrediction` object (a namedtuple with a
+    # predictions and label_ids field) and has to return a dictionary string to float.
+    def compute_metrics(p: EvalPrediction):
+        preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+        preds = np.squeeze(preds) if is_regression else np.argmax(preds, axis=1)
+        result = metric.compute(predictions=preds, references=p.label_ids)
+        if len(result) > 1:
+            result["combined_score"] = np.mean(list(result.values())).item()
+        return result
 
     trainer = Trainer(model=model, args=training_args, train_dataset=train_dataset if training_args.do_train else None,
                       eval_dataset=eval_dataset if training_args.do_eval else None,
