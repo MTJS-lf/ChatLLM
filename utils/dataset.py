@@ -48,3 +48,37 @@ def coll_fn(batch):
         labels_list.append(torch.tensor(instance["labels"], dtype=torch.long))
     return {"input_ids": pad_sequence(input_ids_list, batch_first=True, padding_value=20003),
             "labels": pad_sequence(labels_list, batch_first=True, padding_value=20003)}
+
+class ChatGLM3DataSet(Dataset):
+    def __init__(self, data_path, tokenizer, max_len, max_src_len, prefix):
+        max_tgt_len = max_len - max_src_len - 3
+        self.all_data = []
+        with open(data_path, "r", encoding="utf-8") as fh:
+            for i, line in enumerate(fh):
+                sample = json.loads(line.strip())
+                prompt = sample["text"]
+                response = sample["answer"]
+                a_ids = tokenizer.encode(text=prompt, add_special_tokens=True, truncation=True,
+                                            max_length=max_src_len)
+                b_ids = tokenizer.encode(text=response, add_special_tokens=False, truncation=True,
+                                            max_length=max_tgt_len)
+
+                context_length = len(a_ids)
+                input_ids = a_ids + b_ids + [tokenizer.eos_token_id]
+                labels = [tokenizer.pad_token_id] * context_length + b_ids + [tokenizer.eos_token_id]
+                
+                pad_len = max_len - len(input_ids)
+                input_ids = input_ids + [tokenizer.pad_token_id] * pad_len
+                labels = labels + [tokenizer.pad_token_id] * pad_len
+                labels = [(l if l != tokenizer.pad_token_id else -100) for l in labels]
+
+                assert len(input_ids) == len(labels), f"length mismatch: {len(input_ids)} vs {len(labels)}"
+                self.all_data.append(
+                    {"prompt": prompt, "response": response, "input_ids": input_ids, "labels": labels})
+
+    def __len__(self):
+        return len(self.all_data)
+    
+    def __getitem__(self, i):
+        instance = self.all_data[i]
+        return instance
