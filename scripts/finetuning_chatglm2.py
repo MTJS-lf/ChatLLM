@@ -14,10 +14,11 @@ sys.path.append("..")
 
 from utils.util import *
 from utils.dataset import *
+#from process_data.dataset import *
 
-from model.chatGLM2.modeling_chatglm import ChatGLMForConditionalGeneration
-from model.chatGLM2.tokenization_chatglm import ChatGLMTokenizer
-from model.chatGLM2.configuration_chatglm import ChatGLMConfig
+from model.ChatGLM2_6b.modeling_chatglm import ChatGLMForConditionalGeneration
+from model.ChatGLM2_6b.tokenization_chatglm import ChatGLMTokenizer
+from model.ChatGLM2_6b.configuration_chatglm import ChatGLMConfig
 
 import transformers
 from transformers import (
